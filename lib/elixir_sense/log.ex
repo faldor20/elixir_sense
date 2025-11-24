@@ -37,4 +37,38 @@ defmodule ElixirSense.Log do
       end
     end
   end
+
+  @doc """
+  Times the execution of a function and logs the duration with a descriptive label.
+
+  ## Examples
+
+      ElixirSense.Log.time("database query", fn -> fetch_users() end)
+    
+      ElixirSense.Log.time("reducer #{module_name}", fn ->
+        reducer.(hint, env, buffer_metadata, cursor_context, acc)
+      end)
+  """
+  def time(label, fun) when is_function(fun, 0) do
+    start_time = System.monotonic_time(:microsecond)
+    result = fun.()
+    end_time = System.monotonic_time(:microsecond)
+    duration = end_time - start_time
+  
+    formatted_duration = format_duration(duration)
+    info("⏱️  #{label}: #{formatted_duration}")
+  
+    result
+  end
+
+  # Format duration with appropriate units
+  defp format_duration(microseconds) when microseconds < 1000, do: "#{microseconds}μs"
+  defp format_duration(microseconds) when microseconds < 1_000_000 do
+    ms = Float.round(microseconds / 1000, 2)
+    "#{ms}ms"
+  end
+  defp format_duration(microseconds) do
+    s = Float.round(microseconds / 1_000_000, 3)
+    "#{s}s"
+  end
 end

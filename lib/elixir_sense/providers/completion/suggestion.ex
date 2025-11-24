@@ -1,4 +1,5 @@
 defmodule ElixirSense.Providers.Completion.Suggestion do
+  alias ElixirSense.Log
   @moduledoc """
   Provider responsible for finding suggestions for auto-completing.
 
@@ -126,7 +127,7 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
 
     env = Metadata.get_cursor_env(metadata, {line, column}, surround)
 
-    module_store = ModuleStore.build()
+    module_store = Log.time("ModuleStore.build", fn -> ModuleStore.build() end)
 
     cursor_context = %{
       cursor_position: {line, column},
@@ -155,16 +156,18 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
       plugins
       |> Enum.filter(&function_exported?(&1, :reduce, 5))
       |> Enum.map(fn module ->
-        {module, &module.reduce/5}
+          {module, &module.reduce/5}
       end)
       |> Enum.concat(@reducers)
       |> maybe_add_opts(opts)
 
     context =
-      plugins
-      |> Enum.filter(&function_exported?(&1, :setup, 1))
-      |> Enum.reduce(%{module_store: module_store}, fn plugin, context ->
-        plugin.setup(context)
+      Log.time("Plugin setup", fn ->
+        plugins
+        |> Enum.filter(&function_exported?(&1, :setup, 1))
+        |> Enum.reduce(%{module_store: module_store}, fn plugin, context ->
+          plugin.setup(context)
+        end)
       end)
 
     acc = %{result: [], reducers: Keyword.keys(reducers), context: context}
@@ -172,17 +175,22 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
     %{result: result} =
       Enum.reduce_while(reducers, acc, fn {key, fun}, acc ->
         if key in acc.reducers do
-          fun.(hint, env, buffer_metadata, cursor_context, acc)
+          module_name = key |> to_string() |> String.split(".") |> List.last()
+          Log.time("Reducer #{module_name}", fn ->
+            fun.(hint, env, buffer_metadata, cursor_context, acc)
+          end)
         else
           {:cont, acc}
         end
       end)
 
-    for item <- result do
-      plugins
-      |> Enum.filter(&function_exported?(&1, :decorate, 1))
-      |> Enum.reduce(item, fn module, item -> module.decorate(item) end)
-    end
+    Log.time("Plugin decoration", fn ->
+      for item <- result do
+        plugins
+        |> Enum.filter(&function_exported?(&1, :decorate, 1))
+        |> Enum.reduce(item, fn module, item -> module.decorate(item) end)
+      end
+    end)
   end
 
   defp maybe_add_opts(reducers, opts) do
