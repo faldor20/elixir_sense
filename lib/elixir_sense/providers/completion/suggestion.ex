@@ -127,9 +127,10 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
           {{line, column - String.length(prefix)}, {line, column + String.length(suffix)}}
       end
 
-   Log.time("get env",fn->
-      env = Metadata.get_cursor_env(metadata, {line, column}, surround)
-    end)
+      env =
+        Log.time("get env",fn->
+            Metadata.get_cursor_env(metadata, {line, column}, surround)
+        end)
 
     module_store = Log.time("ModuleStore.build", fn -> ModuleStore.build() end)
 
@@ -158,13 +159,13 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
       ) do
     reducers =
       Log.time("get reducers", fn ->
-      plugins
-      |> Enum.filter(&function_exported?(&1, :reduce, 5))
-      |> Enum.map(fn module ->
-          {module, &module.reduce/5}
-      end)
-      |> Enum.concat(@reducers)
-      |> maybe_add_opts(opts)
+        plugins
+        |> Enum.filter(&function_exported?(&1, :reduce, 5))
+        |> Enum.map(fn module ->
+            {module, &module.reduce/5}
+        end)
+        |> Enum.concat(@reducers)
+        |> maybe_add_opts(opts)
       end)
 
     context =
