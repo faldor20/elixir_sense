@@ -109,9 +109,11 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
     {prefix = hint, suffix} = Source.prefix_suffix(code, line, column)
 
     metadata =
-      Keyword.get_lazy(options, :metadata, fn ->
-        Parser.parse_string(code, true, false, {line, column})
+     Log.time("parse metadata",fn->
+         Keyword.get_lazy(options, :metadata, fn ->
+          Parser.parse_string(code, true, false, {line, column})
       end)
+    end)
 
     {text_before, text_after} = Source.split_at(code, line, column)
 
@@ -125,7 +127,9 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
           {{line, column - String.length(prefix)}, {line, column + String.length(suffix)}}
       end
 
-    env = Metadata.get_cursor_env(metadata, {line, column}, surround)
+   Log.time("get env",fn->
+      env = Metadata.get_cursor_env(metadata, {line, column}, surround)
+    end)
 
     module_store = Log.time("ModuleStore.build", fn -> ModuleStore.build() end)
 
@@ -153,6 +157,7 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
         opts \\ []
       ) do
     reducers =
+      Log.time("get reducers", fn ->
       plugins
       |> Enum.filter(&function_exported?(&1, :reduce, 5))
       |> Enum.map(fn module ->
@@ -160,6 +165,7 @@ defmodule ElixirSense.Providers.Completion.Suggestion do
       end)
       |> Enum.concat(@reducers)
       |> maybe_add_opts(opts)
+      end)
 
     context =
       Log.time("Plugin setup", fn ->
