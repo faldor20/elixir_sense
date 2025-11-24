@@ -45,9 +45,6 @@ defmodule ElixirSense.Log do
 
       ElixirSense.Log.time("database query", fn -> fetch_users() end)
     
-      ElixirSense.Log.time("reducer #{module_name}", fn ->
-        reducer.(hint, env, buffer_metadata, cursor_context, acc)
-      end)
   """
   def time(label, fun) when is_function(fun, 0) do
     start_time = System.monotonic_time(:microsecond)
